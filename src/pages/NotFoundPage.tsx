@@ -1,13 +1,17 @@
-import { Link } from 'react-router-dom';
-import { useAppSettings } from '../shared/providers/AppSettingsProvider';
+import { isRouteErrorResponse, Link, useRouteError } from 'react-router-dom';
 
-export function NotFoundPage() {
-  const { t } = useAppSettings();
+export const NotFoundPage = () => {
+  const error = useRouteError();
+  const message = isRouteErrorResponse(error) ? error.data : 'Страница не найдена или моковый ресурс отсутствует.';
+
   return (
-    <section className="panel">
-      <h1>404</h1>
-      <p>{t('not_found_text')}</p>
-      <Link className="btn" to="/">{t('back_home')}</Link>
-    </section>
+    <main className="not-found">
+      <p className="eyebrow">404</p>
+      <h1>Ничего не найдено</h1>
+      <p>{message}</p>
+      <Link className="button primary" to="/">
+        На главную
+      </Link>
+    </main>
   );
-}
+};

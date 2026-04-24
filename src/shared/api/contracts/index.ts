@@ -1,45 +1,139 @@
-import type { Match, Season, Team, Tournament, TournamentBundle } from '../../../entities/season/model';
+export type Role = 'guest' | 'user';
 
-export type SeasonsResponse = Season[];
-export type SeasonResponse = Season;
-export type TournamentsResponse = Tournament[];
-export type TournamentResponse = Tournament;
-export type BracketResponse = TournamentBundle['bracket'];
-export type ScheduleResponse = Match[];
-export type StandingsResponse = TournamentBundle['standings'];
-export type MatchResponse = Match;
-export type TeamResponse = Team;
-export type PlayerResponse = {
+export type TournamentStatus = 'upcoming' | 'live' | 'finished';
+
+export type BoFormat = 'BO1' | 'BO3' | 'BO5';
+
+export type SlotState = 'empty' | 'pending_members' | 'pending_admin' | 'approved' | 'live' | 'finished';
+
+export type ApplicationStatus =
+  | 'draft'
+  | 'pending_members'
+  | 'pending_admin'
+  | 'approved'
+  | 'rejected';
+
+export interface UserDTO {
+  id: string;
+  username: string;
+  email: string;
+  role: Exclude<Role, 'guest'>;
+  avatarUrl?: string;
+}
+
+export interface NewsDTO {
+  id: string;
   slug: string;
-  nickname: string;
-  team: string;
-  stats: { kd: number; adr: number; mvp: number };
-};
-export type RankingsResponse = Array<{ team: string; points: number }>;
-export type StreamsResponse = Array<{ id: string; title: string; isLive: boolean; viewers: number; url: string }>;
+  title: string;
+  teaser: string;
+  body: string;
+  publishedAt: string;
+  imageUrl: string;
+}
 
-export interface RegistrationRequest {
+export interface TournamentLinkDTO {
+  label: string;
+  url: string;
+}
+
+export interface TournamentSummaryDTO {
+  id: string;
+  slug: string;
+  title: string;
+  status: TournamentStatus;
+  boFormat: BoFormat;
+  startsAt: string;
+  prizePool: string;
+  imageUrl: string;
+  registeredTeamsCount: number;
+  maxTeamsCount: number;
+  description: string;
+}
+
+export interface BracketSlotDTO {
+  slotNo: number;
+  seed: string;
+  state: SlotState;
+  teamName?: string;
+  applicationId?: string;
+  members?: string[];
+  score?: string;
+}
+
+export interface MatchDTO {
+  id: string;
+  title: string;
+  teamA: string;
+  teamB: string;
+  score: string;
+  startsAt: string;
+  status: 'scheduled' | 'live' | 'finished';
+  streamUrl?: string;
+}
+
+export interface TournamentDetailDTO extends TournamentSummaryDTO {
+  links: TournamentLinkDTO[];
+  bracket: BracketSlotDTO[];
+  rules: string[];
+  streamLinks: TournamentLinkDTO[];
+  currentMatch?: MatchDTO;
+  liveMatches: MatchDTO[];
+  completedMatches: MatchDTO[];
+  winnerTeam?: string;
+  finalScore?: string;
+  canApply: boolean;
+  myApplication?: ApplicationDTO;
+}
+
+export interface ApplicationDTO {
+  id: string;
   tournamentSlug: string;
+  slotNo: number;
   teamName: string;
+  captainId: string;
+  members: string[];
+  status: ApplicationStatus;
+  createdAt: string;
 }
 
-export interface CheckInRequest {
-  matchId: string;
-  player: string;
+export interface CreateApplicationDTO {
+  slotNo: number;
+  teamName: string;
+  members: string[];
 }
 
-export interface ReportResultRequest {
-  matchId: string;
-  scoreA: number;
-  scoreB: number;
+export interface NotificationDTO {
+  id: string;
+  title: string;
+  body: string;
+  href: string;
+  createdAt: string;
+  read: boolean;
 }
 
-export interface DisputeRequest {
-  matchId: string;
-  reason: string;
-}
+/*
+Future FastAPI contracts. Runtime intentionally uses mocks now.
 
-export interface RescheduleRequest {
-  matchId: string;
-  requestedAt: string;
-}
+POST /auth/register
+POST /auth/login
+GET /auth/me
+POST /auth/logout
+
+GET /news
+GET /news/{slug}
+
+GET /tournaments?status=upcoming|live|finished
+GET /tournaments/{slug}
+GET /tournaments/{slug}/bracket
+GET /users/search?q=
+
+POST /tournaments/{slug}/applications
+GET /applications/{id}
+POST /applications/{id}/members/{user_id}/accept
+POST /applications/{id}/members/{user_id}/decline
+PATCH /applications/{id}
+
+GET /notifications
+POST /notifications/{id}/read
+WS /ws/notifications
+*/
