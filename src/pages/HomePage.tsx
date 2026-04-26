@@ -1,6 +1,7 @@
 import { Link, useLoaderData } from 'react-router-dom';
 import { useSession } from '../app/SessionContext';
 import type { NewsDTO, TournamentDetailDTO } from '../shared/api/contracts';
+import { localizeNews, localizeTournament } from '../shared/lib/contentLocalization';
 import { fillCounter, formatDateTime } from '../shared/lib/format';
 
 interface HomeLoaderData {
@@ -15,7 +16,10 @@ interface HomeLoaderData {
 
 export const HomePage = () => {
   const { featuredTournament, latestNews, counters } = useLoaderData() as HomeLoaderData;
-  const { t, language } = useSession();
+  const { t, language, role } = useSession();
+  const localizedFeaturedTournament = localizeTournament(featuredTournament, language);
+  const localizedLatestNews = latestNews.map((item) => localizeNews(item, language));
+  const isGuest = role === 'guest';
   const statusLabels = {
     upcoming: t('statusUpcoming'),
     live: t('statusLive'),
@@ -33,40 +37,42 @@ export const HomePage = () => {
             <Link className="button primary" to="/tournaments">
               {t('watchTournaments')}
             </Link>
-            <Link className="button ghost" to="/auth/register">
-              {t('register')}
-            </Link>
+            {isGuest ? (
+              <Link className="button ghost" to="/auth/register">
+                {t('register')}
+              </Link>
+            ) : null}
           </div>
         </div>
 
-        <Link className="featured-card" to={`/tournaments/${featuredTournament.slug}`}>
-          <img src={featuredTournament.imageUrl} alt="" />
+        <Link className="featured-card" to={`/tournaments/${localizedFeaturedTournament.slug}`}>
+          <img src={localizedFeaturedTournament.imageUrl} alt="" />
           <div className="featured-card__content">
-            <span className={`status-pill ${featuredTournament.status}`}>{statusLabels[featuredTournament.status]}</span>
-            <h2>{featuredTournament.title}</h2>
+            <span className={`status-pill ${localizedFeaturedTournament.status}`}>{statusLabels[localizedFeaturedTournament.status]}</span>
+            <h2>{localizedFeaturedTournament.title}</h2>
             <dl className="meta-grid">
               <div>
                 <dt>{t('date')}</dt>
-                <dd>{formatDateTime(featuredTournament.startsAt, language)}</dd>
+                <dd>{formatDateTime(localizedFeaturedTournament.startsAt, language)}</dd>
               </div>
               <div>
                 <dt>{t('format')}</dt>
-                <dd>{featuredTournament.boFormat}</dd>
+                <dd>{localizedFeaturedTournament.boFormat}</dd>
               </div>
               <div>
                 <dt>{t('prizePool')}</dt>
-                <dd>{featuredTournament.prizePool}</dd>
+                <dd>{localizedFeaturedTournament.prizePool}</dd>
               </div>
               <div>
                 <dt>{t('teams')}</dt>
-                <dd>{fillCounter(featuredTournament.registeredTeamsCount, featuredTournament.maxTeamsCount)}</dd>
+                <dd>{fillCounter(localizedFeaturedTournament.registeredTeamsCount, localizedFeaturedTournament.maxTeamsCount)}</dd>
               </div>
             </dl>
           </div>
         </Link>
       </section>
 
-      <section className="metric-strip" aria-label="Метрики мокового состояния">
+      <section className="metric-strip" aria-label="League metrics">
         <article>
           <strong>{counters.tournaments}</strong>
           <span>{t('tournamentsInCatalog')}</span>
@@ -92,7 +98,7 @@ export const HomePage = () => {
       </section>
 
       <div className="news-grid">
-        {latestNews.map((item) => (
+        {localizedLatestNews.map((item) => (
           <Link className="news-card" key={item.id} to={`/news/${item.slug}`}>
             <img src={item.imageUrl} alt="" />
             <span>{formatDateTime(item.publishedAt, language)}</span>

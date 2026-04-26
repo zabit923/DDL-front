@@ -1,5 +1,7 @@
 import { Link, NavLink, Outlet, ScrollRestoration } from 'react-router-dom';
 import { useSession } from './SessionContext';
+import { TelegramConfirmationBanner } from '../pages/AuthPages';
+import { resolveAvatarUrl } from '../shared/lib/avatar';
 
 const navItems = [
   { to: '/', labelKey: 'navHome', end: true },
@@ -9,8 +11,15 @@ const navItems = [
 ] as const;
 
 export const AppShell = () => {
-  const { role, setRole, unreadCount, theme, setTheme, language, setLanguage, t } = useSession();
+  const { role, user, setAuthenticatedUser, unreadCount, theme, setTheme, language, setLanguage, t } = useSession();
   const isGuest = role === 'guest';
+  const needsTelegramConfirmation = !isGuest && user?.telegramConfirmed === false;
+  const baseNavItems = isGuest || needsTelegramConfirmation
+    ? navItems.filter((item) => item.to !== '/notifications')
+    : navItems;
+  const visibleNavItems = !needsTelegramConfirmation && user?.admin
+    ? [...baseNavItems, { to: '/admin', labelKey: 'navAdmin', end: false } as const]
+    : baseNavItems;
 
   return (
     <div className="app-shell">
@@ -23,7 +32,7 @@ export const AppShell = () => {
         </Link>
 
         <nav className="topnav" aria-label="Navigation">
-          {navItems.map((item) => (
+          {visibleNavItems.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
@@ -65,12 +74,16 @@ export const AppShell = () => {
               {t('login')}
             </Link>
           ) : (
-            <button className="button ghost" type="button" onClick={() => setRole('guest')}>
-              {t('logout')}
-            </button>
+            <Link className="profile-avatar-link" to="/profile" aria-label={t('profile')}>
+              <img src={resolveAvatarUrl(user?.avatarUrl)} alt="" />
+            </Link>
           )}
         </div>
       </header>
+
+      {needsTelegramConfirmation ? (
+        <TelegramConfirmationBanner telegram={user.telegram} onUserRefresh={setAuthenticatedUser} />
+      ) : null}
 
       <main className="page-frame">
         <Outlet />

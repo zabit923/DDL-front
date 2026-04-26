@@ -1,6 +1,8 @@
-import { createBrowserRouter } from 'react-router-dom';
+import type { ReactElement } from 'react';
+import { Navigate, createBrowserRouter } from 'react-router-dom';
 import { AppShell } from './AppShell';
-import { newsRepository, tournamentsRepository } from '../mocks/repositories';
+import { useSession } from './SessionContext';
+import { newsRepository, tournamentsRepository } from '../shared/api/repositories';
 import { HomePage } from '../pages/HomePage';
 import { TournamentsPage } from '../pages/TournamentsPage';
 import { TournamentDetailPage } from '../pages/TournamentDetailPage';
@@ -8,10 +10,40 @@ import { ApplicationPage } from '../pages/ApplicationPage';
 import { NotificationsPage } from '../pages/NotificationsPage';
 import { LoginPage, RegisterPage } from '../pages/AuthPages';
 import { NewsDetailPage, NewsPage } from '../pages/NewsPages';
+import { ProfilePage } from '../pages/ProfilePage';
 import { NotFoundPage } from '../pages/NotFoundPage';
+import { AdminPage } from '../pages/AdminPage';
 import type { TournamentStatus } from '../shared/api/contracts';
 
 const allowedStatuses = new Set(['all', 'upcoming', 'live', 'finished']);
+
+const GuestOnly = ({ children }: { children: ReactElement }) => {
+  const { role } = useSession();
+  return role === 'guest' ? children : <Navigate replace to="/" />;
+};
+
+const AuthOnly = ({ children }: { children: ReactElement }) => {
+  const { role } = useSession();
+  return role === 'guest' ? <Navigate replace to="/auth/login?returnTo=/profile" /> : children;
+};
+
+const AdminOnly = ({ children }: { children: ReactElement }) => {
+  const { role, user } = useSession();
+
+  if (role === 'guest') {
+    return <Navigate replace to="/auth/login?returnTo=/admin" />;
+  }
+
+  if (!user) {
+    return null;
+  }
+
+  if (!user.telegramConfirmed) {
+    return <Navigate replace to="/profile" />;
+  }
+
+  return user.admin ? children : <Navigate replace to="/" />;
+};
 
 export const router = createBrowserRouter([
   {
@@ -36,11 +68,19 @@ export const router = createBrowserRouter([
       },
       {
         path: 'auth/login',
-        element: <LoginPage />
+        element: (
+          <GuestOnly>
+            <LoginPage />
+          </GuestOnly>
+        )
       },
       {
         path: 'auth/register',
-        element: <RegisterPage />
+        element: (
+          <GuestOnly>
+            <RegisterPage />
+          </GuestOnly>
+        )
       },
       {
         path: 'tournaments',
@@ -77,6 +117,22 @@ export const router = createBrowserRouter([
       {
         path: 'notifications',
         element: <NotificationsPage />
+      },
+      {
+        path: 'profile',
+        element: (
+          <AuthOnly>
+            <ProfilePage />
+          </AuthOnly>
+        )
+      },
+      {
+        path: 'admin',
+        element: (
+          <AdminOnly>
+            <AdminPage />
+          </AdminOnly>
+        )
       }
     ]
   },

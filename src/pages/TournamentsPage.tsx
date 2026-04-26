@@ -1,6 +1,7 @@
 import { Link, useLoaderData, useSearchParams } from 'react-router-dom';
 import { useSession } from '../app/SessionContext';
 import type { TournamentDetailDTO, TournamentStatus } from '../shared/api/contracts';
+import { localizeTournament } from '../shared/lib/contentLocalization';
 import { fillCounter, formatDateTime } from '../shared/lib/format';
 
 const filters: Array<{ value: TournamentStatus | 'all'; labelKey: 'all' | 'upcomingPlural' | 'livePlural' | 'finishedPlural' }> = [
@@ -19,6 +20,8 @@ export const TournamentsPage = () => {
   const { items: tournaments, latestLiveTournament } = useLoaderData() as TournamentsLoaderData;
   const [searchParams] = useSearchParams();
   const { t, language } = useSession();
+  const localizedTournaments = tournaments.map((item) => localizeTournament(item, language));
+  const localizedLatestLiveTournament = latestLiveTournament ? localizeTournament(latestLiveTournament, language) : null;
   const active = searchParams.get('status') ?? 'all';
   const statusLabels: Record<TournamentStatus, string> = {
     upcoming: t('statusUpcoming'),
@@ -28,47 +31,47 @@ export const TournamentsPage = () => {
 
   return (
     <div className="stack-xl">
-      {latestLiveTournament ? (
+      {localizedLatestLiveTournament ? (
         <section className="live-tournament-hero">
-          <img src={latestLiveTournament.imageUrl} alt="" />
+          <img src={localizedLatestLiveTournament.imageUrl} alt="" />
           <div className="live-tournament-hero__shade" />
           <div className="live-tournament-hero__content">
             <div className="card-topline">
               <span className="status-pill live">{t('liveNow')}</span>
-              <span>{latestLiveTournament.boFormat}</span>
-              <span>{fillCounter(latestLiveTournament.registeredTeamsCount, latestLiveTournament.maxTeamsCount)}</span>
+              <span>{localizedLatestLiveTournament.boFormat}</span>
+              <span>{fillCounter(localizedLatestLiveTournament.registeredTeamsCount, localizedLatestLiveTournament.maxTeamsCount)}</span>
             </div>
             <p className="eyebrow">{t('latestLiveTournament')}</p>
-            <h1>{latestLiveTournament.title}</h1>
-            <p>{latestLiveTournament.description}</p>
+            <h1>{localizedLatestLiveTournament.title}</h1>
+            <p>{localizedLatestLiveTournament.description}</p>
             <dl className="meta-grid">
               <div>
                 <dt>{t('start')}</dt>
-                <dd>{formatDateTime(latestLiveTournament.startsAt, language)}</dd>
+                <dd>{formatDateTime(localizedLatestLiveTournament.startsAt, language)}</dd>
               </div>
               <div>
                 <dt>{t('prizePool')}</dt>
-                <dd>{latestLiveTournament.prizePool}</dd>
+                <dd>{localizedLatestLiveTournament.prizePool}</dd>
               </div>
               <div>
                 <dt>{t('currentMatch')}</dt>
                 <dd>
-                  {latestLiveTournament.currentMatch
-                    ? `${latestLiveTournament.currentMatch.teamA} ${latestLiveTournament.currentMatch.score} ${latestLiveTournament.currentMatch.teamB}`
+                  {localizedLatestLiveTournament.currentMatch
+                    ? `${localizedLatestLiveTournament.currentMatch.teamA} ${localizedLatestLiveTournament.currentMatch.score} ${localizedLatestLiveTournament.currentMatch.teamB}`
                     : t('bracketUpdating')}
                 </dd>
               </div>
               <div>
                 <dt>{t('stream')}</dt>
-                <dd>{latestLiveTournament.streamLinks[0]?.label ?? t('soon')}</dd>
+                <dd>{localizedLatestLiveTournament.streamLinks[0]?.label ?? t('soon')}</dd>
               </div>
             </dl>
             <div className="hero-actions">
-              <Link className="button primary" to={`/tournaments/${latestLiveTournament.slug}`}>
+              <Link className="button primary" to={`/tournaments/${localizedLatestLiveTournament.slug}`}>
                 {t('openLivePage')}
               </Link>
-              {latestLiveTournament.streamLinks[0] ? (
-                <a className="button ghost light" href={latestLiveTournament.streamLinks[0].url} target="_blank" rel="noreferrer">
+              {localizedLatestLiveTournament.streamLinks[0] ? (
+                <a className="button ghost light" href={localizedLatestLiveTournament.streamLinks[0].url} target="_blank" rel="noreferrer">
                   {t('watchStream')}
                 </a>
               ) : null}
@@ -96,7 +99,7 @@ export const TournamentsPage = () => {
       </div>
 
       <section className="tournament-grid">
-        {tournaments.map((tournament) => (
+        {localizedTournaments.map((tournament) => (
           <Link className="tournament-card" key={tournament.id} to={`/tournaments/${tournament.slug}`}>
             <img src={tournament.imageUrl} alt="" />
             <div className="tournament-card__body">

@@ -1,9 +1,9 @@
-import { FormEvent, useDeferredValue, useEffect, useOptimistic, useState, useTransition } from 'react';
+import { useEffect, useOptimistic, useState, useTransition } from 'react';
 import { Link, useLoaderData, useNavigate } from 'react-router-dom';
 import { useSession } from '../app/SessionContext';
-import { currentUser } from '../mocks/data';
-import { applicationsRepository, usersRepository } from '../mocks/repositories';
-import type { TournamentDetailDTO, UserDTO } from '../shared/api/contracts';
+import { applicationsRepository, profileRepository } from '../shared/api/repositories';
+import type { ProfileDTO, TeamMemberStatus, TournamentDetailDTO } from '../shared/api/contracts';
+import { localizeTournament } from '../shared/lib/contentLocalization';
 
 interface ApplicationLoaderData {
   tournament: TournamentDetailDTO;
@@ -15,58 +15,69 @@ interface OptimisticSubmission {
   members: string[];
 }
 
+const memberStatusKeys: Record<TeamMemberStatus, 'teamStatusCaptain' | 'teamStatusActive' | 'teamStatusInvited'> = {
+  captain: 'teamStatusCaptain',
+  active: 'teamStatusActive',
+  invited: 'teamStatusInvited'
+};
+
 export const ApplicationPage = () => {
   const { tournament, slotNo } = useLoaderData() as ApplicationLoaderData;
-  const slot = tournament.bracket.find((item) => item.slotNo === slotNo);
+  const { role, user, refreshUnread, t, language } = useSession();
+  const localizedTournament = localizeTournament(tournament, language);
+  const slot = localizedTournament.bracket.find((item) => item.slotNo === slotNo);
+  const needsTelegramConfirmation = role !== 'guest' && user?.telegramConfirmed === false;
   const navigate = useNavigate();
-  const { role, refreshUnread } = useSession();
-  const [teamName, setTeamName] = useState('');
-  const [members, setMembers] = useState(['', '', '', '', '']);
-  const [activeIndex, setActiveIndex] = useState<number | null>(null);
-  const [suggestions, setSuggestions] = useState<UserDTO[]>([]);
+  const [profile, setProfile] = useState<ProfileDTO | null>(null);
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isPending, startTransition] = useTransition();
-  const activeQuery = activeIndex === null ? '' : members[activeIndex];
-  const deferredQuery = useDeferredValue(activeQuery);
   const [optimisticSubmission, addOptimisticSubmission] = useOptimistic<
     OptimisticSubmission | null,
     OptimisticSubmission
   >(null, (_current, next) => next);
 
   useEffect(() => {
-    const query = deferredQuery.trim();
-    if (!query) {
-      setSuggestions([]);
+    if (role === 'guest' || needsTelegramConfirmation) {
       return;
     }
 
     let alive = true;
-    const timer = window.setTimeout(() => {
-      void usersRepository.search(query).then((items) => {
-        if (alive) {
-          setSuggestions(items);
-        }
-      });
-    }, 180);
+    void profileRepository.get().then((nextProfile) => {
+      if (alive) {
+        setProfile(nextProfile);
+      }
+    });
 
     return () => {
       alive = false;
-      window.clearTimeout(timer);
     };
-  }, [deferredQuery]);
+  }, [role, needsTelegramConfirmation]);
 
   if (role === 'guest') {
     return (
       <section className="page-hero compact">
-        <p className="eyebrow">Auth required</p>
-        <h1>Заявка доступна после входа</h1>
-        <p>Гость может смотреть турниры и новости, но заявку на слот отправляет авторизованный пользователь.</p>
+        <p className="eyebrow">{t('authRequired')}</p>
+        <h1>{t('applyAfterLogin')}</h1>
+        <p>{t('applyAfterLoginText')}</p>
         <Link
           className="button primary"
-          to={`/auth/login?returnTo=${encodeURIComponent(`/tournaments/${tournament.slug}/apply/${slotNo}`)}`}
+          to={`/auth/login?returnTo=${encodeURIComponent(`/tournaments/${localizedTournament.slug}/apply/${slotNo}`)}`}
         >
-          Войти
+          {t('login')}
+        </Link>
+      </section>
+    );
+  }
+
+  if (needsTelegramConfirmation) {
+    return (
+      <section className="page-hero compact">
+        <p className="eyebrow">{t('telegramConfirmationEyebrow')}</p>
+        <h1>{t('telegramConfirmationTitle')}</h1>
+        <p>{t('telegramRequiredForActionsText')}</p>
+        <Link className="button primary" to="/profile">
+          {t('confirmTelegramToApply')}
         </Link>
       </section>
     );
@@ -75,71 +86,62 @@ export const ApplicationPage = () => {
   if (!slot || slot.state !== 'empty') {
     return (
       <section className="page-hero compact">
-        <p className="eyebrow">Slot unavailable</p>
-        <h1>Слот недоступен</h1>
-        <p>Выбранный слот уже занят или не существует.</p>
-        <Link className="button primary" to={`/tournaments/${tournament.slug}`}>
-          Вернуться к сетке
+        <p className="eyebrow">{t('slotUnavailable')}</p>
+        <h1>{t('slotUnavailable')}</h1>
+        <p>{t('slotUnavailableText')}</p>
+        <Link className="button primary" to={`/tournaments/${localizedTournament.slug}`}>
+          {t('backToBracket')}
         </Link>
       </section>
     );
   }
 
-  const updateMember = (index: number, value: string) => {
-    setMembers((current) => current.map((member, currentIndex) => (currentIndex === index ? value : member)));
-  };
+  if (!profile) {
+    return (
+      <section className="page-hero compact">
+        <p className="eyebrow">{t('teamApplication')}</p>
+        <h1>{t('loading')}</h1>
+      </section>
+    );
+  }
 
-  const selectSuggestion = (index: number, username: string) => {
-    updateMember(index, username);
-    setSuggestions([]);
-  };
+  if (!profile.team) {
+    return (
+      <section className="page-hero compact">
+        <p className="eyebrow">{t('teamApplication')}</p>
+        <h1>{t('createTeamFirstTitle')}</h1>
+        <p>{t('createTeamFirstText')}</p>
+        <Link className="button primary" to="/profile">
+          {t('openProfile')}
+        </Link>
+      </section>
+    );
+  }
 
-  const validate = () => {
-    const normalizedTeam = teamName.trim();
-    const normalizedMembers = members.map((member) => member.trim()).filter(Boolean);
-    const unique = new Set([currentUser.username, ...normalizedMembers].map((member) => member.toLowerCase()));
+  const teamMembers = profile.team.members.map((member) => member.username);
+  const rosterReady =
+    profile.team.members.length === 6 &&
+    profile.team.members.every((member) => member.status === 'captain' || member.status === 'active');
 
-    if (normalizedTeam.length < 2) {
-      return 'Название команды должно быть не короче 2 символов.';
-    }
-
-    if (normalizedMembers.length !== 5) {
-      return 'Нужно указать пять тиммейтов, капитан уже добавлен первым слотом.';
-    }
-
-    if (unique.size !== 6) {
-      return 'В составе не должно быть повторяющихся игроков.';
-    }
-
-    return '';
-  };
-
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const validationError = validate();
-    setError(validationError);
-    if (validationError) {
+  const handleSubmit = () => {
+    if (!profile.team || !rosterReady) {
+      setError(t('teamRosterRequired'));
       return;
     }
 
-    const payload = {
-      slotNo,
-      teamName: teamName.trim(),
-      members: [currentUser.username, ...members.map((member) => member.trim())]
-    };
-
+    setError('');
     setIsSubmitting(true);
 
     startTransition(() => {
-      addOptimisticSubmission(payload);
+      addOptimisticSubmission({ teamName: profile.team!.name, members: teamMembers });
       void applicationsRepository
-        .submit(tournament.slug, payload)
+        .submit(localizedTournament.slug, { slotNo, teamId: profile.team!.id })
         .then(() => {
           refreshUnread();
-          navigate(`/tournaments/${tournament.slug}`);
+          navigate(`/tournaments/${localizedTournament.slug}`);
         })
         .catch((submissionError: unknown) => {
-          setError(submissionError instanceof Error ? submissionError.message : 'Не удалось отправить заявку.');
+          setError(submissionError instanceof Error ? submissionError.message : t('applicationSubmitError'));
           setIsSubmitting(false);
         });
     });
@@ -148,77 +150,64 @@ export const ApplicationPage = () => {
   return (
     <div className="stack-xl">
       <section className="page-hero compact">
-        <p className="eyebrow">Team application</p>
+        <p className="eyebrow">{t('teamApplication')}</p>
         <h1>
-          Заявка на {tournament.title}, слот {slot.seed}
+          {t('applyTo')} {localizedTournament.title}, {t('slot')} {slot.seed}
         </h1>
-        <p>
-          Первый прямоугольник занят капитаном. Еще пять полей ищут игроков по моковому каталогу и сохраняют
-          заявку в сетку optimistic-потоком.
-        </p>
+        <p>{t('teamApplicationText')}</p>
       </section>
 
-      <form className="application-layout" onSubmit={handleSubmit}>
-        <section className="panel form-panel">
-          <label className="field">
-            <span>Название команды</span>
-            <input value={teamName} onChange={(event) => setTeamName(event.target.value)} placeholder="Например, Metro Haze" />
-          </label>
+      <section className="application-layout">
+        <div className="panel form-panel">
+          <div className="section-head inline">
+            <div>
+              <p className="eyebrow">{t('team')}</p>
+              <h2>{profile.team.name}</h2>
+            </div>
+            <span className={rosterReady ? 'status-pill upcoming' : 'status-pill'}>
+              {rosterReady ? t('readyToApply') : t('needsRoster')}
+            </span>
+          </div>
 
           <div className="member-grid">
-            <div className="member-card captain">
-              <span>Captain</span>
-              <strong>{currentUser.username}</strong>
-            </div>
-            {members.map((member, index) => (
-              <label className="member-card editable" key={index}>
-                <span>Player {index + 2}</span>
-                <input
-                  value={member}
-                  onChange={(event) => updateMember(index, event.target.value)}
-                  onFocus={() => setActiveIndex(index)}
-                  placeholder="Ник игрока"
-                />
-                {activeIndex === index && suggestions.length > 0 ? (
-                  <div className="suggestions">
-                    {suggestions.map((suggestion) => (
-                      <button
-                        key={suggestion.id}
-                        type="button"
-                        onMouseDown={() => selectSuggestion(index, suggestion.username)}
-                      >
-                        {suggestion.username}
-                      </button>
-                    ))}
-                  </div>
-                ) : null}
-              </label>
+            {profile.team.members.map((member) => (
+              <article className={member.status === 'captain' ? 'member-card captain' : 'member-card'} key={member.userId}>
+                <strong>{member.username}</strong>
+                <span>{t(memberStatusKeys[member.status])}</span>
+              </article>
             ))}
           </div>
+
+          {!rosterReady ? (
+            <p className="notice">{t('teamRosterRequired')}</p>
+          ) : null}
 
           {error ? <p className="form-error">{error}</p> : null}
 
           <div className="form-actions">
-            <Link className="button ghost" to={`/tournaments/${tournament.slug}`}>
-              Отмена
+            <Link className="button ghost" to={`/tournaments/${localizedTournament.slug}`}>
+              {t('cancel')}
             </Link>
-            <button className="button primary" disabled={isSubmitting || isPending} type="submit">
-              {isSubmitting ? 'Отправка...' : 'Отправить заявку'}
+            <Link className="button ghost" to="/profile">
+              {t('manageTeam')}
+            </Link>
+            <button className="button primary" disabled={isSubmitting || isPending || !rosterReady} type="button" onClick={handleSubmit}>
+              {isSubmitting ? t('submitting') : t('submitApplication')}
             </button>
           </div>
-        </section>
+        </div>
 
         <aside className="panel side-panel">
-          <p className="eyebrow">Preview</p>
-          <h2>{optimisticSubmission?.teamName || teamName || 'Команда пока без названия'}</h2>
-          <p>После отправки этот блок появится в сетке со статусом «ожидает подтверждения».</p>
+          <p className="eyebrow">{t('preview')}</p>
+          <h2>{optimisticSubmission?.teamName || profile.team.name}</h2>
+          <p>{t('applicationPreviewText')}</p>
           <ul className="check-list">
-            {(optimisticSubmission?.members ?? [currentUser.username, ...members]).map((member, index) => (
-              <li key={`${member}-${index}`}>{member || `Игрок ${index + 1}`}</li>
+            {(optimisticSubmission?.members ?? teamMembers).map((member, index) => (
+              <li key={`${member}-${index}`}>{member || `${t('player')} ${index + 1}`}</li>
             ))}
           </ul>
         </aside>
-      </form>
+      </section>
     </div>
   );
 };

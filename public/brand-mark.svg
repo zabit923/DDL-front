@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="504" height="440" viewBox="0 0 504 440" role="img" aria-label="DDL">
+  <defs>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feDropShadow dx="0" dy="0" stdDeviation="28" flood-color="#d7ff55" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+  <rect width="504" height="440" rx="116" fill="#b7db25" filter="url(#glow)"/>
+  <path d="M388 0h116v116A116 116 0 0 1 388 0Z" fill="#f7cb9e" opacity="0.92"/>
+  <path d="M116 440H0V324a116 116 0 0 1 116 116Z" fill="#f7cb9e" opacity="0.92"/>
+  <text
+    x="252"
+    y="258"
+    fill="#11140d"
+    font-family="Manrope, Segoe UI, Arial, sans-serif"
+    font-size="138"
+    font-weight="900"
+    text-anchor="middle"
+    dominant-baseline="middle"
+  >DDL</text>
+</svg>

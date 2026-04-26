@@ -1,9 +1,9 @@
-import { FormEvent, useEffect, useState, useTransition, type ReactNode } from 'react';
+import { FormEvent, useCallback, useEffect, useState, useTransition, type ReactNode } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useSession } from '../app/SessionContext';
-import { authRepository } from '../mocks/repositories';
+import { authRepository } from '../shared/api/repositories';
+import type { AuthResponseDTO, UserDTO } from '../shared/api/contracts';
 
-const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const usernamePattern = /^[a-zA-Z0-9_а-яА-ЯёЁ-]+$/;
 const motivationKeys = ['authMotivation1', 'authMotivation2', 'authMotivation3'] as const;
 
@@ -15,11 +15,20 @@ const getReturnTo = (value: string | null) => {
   return value;
 };
 
-const validateLogin = (email: string, password: string, t: ReturnType<typeof useSession>['t']) => {
-  if (!emailPattern.test(email.trim())) {
-    return t('invalidEmail');
+const normalizeTelegram = (value: string) => {
+  const normalized = value.trim();
+  if (!normalized.replace(/^@+/, '').trim()) {
+    return '';
   }
+  return normalized.startsWith('@') ? normalized : `@${normalized}`;
+};
 
+const formatTelegramInput = (value: string) => {
+  const normalized = value.trim().replace(/^@+/, '');
+  return normalized ? `@${normalized}` : '';
+};
+
+const validateLogin = (telegram: string, password: string, t: ReturnType<typeof useSession>['t']) => {
   if (password.length < 4) {
     return t('passwordTooShort4');
   }
@@ -29,7 +38,7 @@ const validateLogin = (email: string, password: string, t: ReturnType<typeof use
 
 const validateRegister = (
   username: string,
-  email: string,
+  telegram: string,
   password: string,
   confirmPassword: string,
   t: ReturnType<typeof useSession>['t']
@@ -42,10 +51,6 @@ const validateRegister = (
 
   if (!usernamePattern.test(normalizedUsername)) {
     return t('usernameChars');
-  }
-
-  if (!emailPattern.test(email.trim())) {
-    return t('invalidEmail');
   }
 
   if (password.length < 6) {
@@ -62,9 +67,9 @@ const validateRegister = (
 export const LoginPage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { role, setRole, t } = useSession();
-  const [email, setEmail] = useState(() => localStorage.getItem('ddl-auth-email') ?? 'aster@deadlock.local');
-  const [password, setPassword] = useState('demo1');
+  const { role, setAuthenticatedUser, t } = useSession();
+  const [telegram, setTelegram] = useState(() => localStorage.getItem('ddl-auth-telegram') ?? '');
+  const [password, setPassword] = useState('');
   const [remember, setRemember] = useState(true);
   const [error, setError] = useState('');
   const [isPending, startTransition] = useTransition();
@@ -72,23 +77,30 @@ export const LoginPage = () => {
   const registerHref = `/auth/register?returnTo=${encodeURIComponent(returnTo)}`;
   const motivation = useAuthMotivation();
 
+  const finishAuth = (response: AuthResponseDTO) => {
+    setAuthenticatedUser(response.user);
+    navigate(returnTo);
+  };
+
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const validationError = validateLogin(email, password, t);
+    const validationError = validateLogin(telegram, password, t);
     setError(validationError);
     if (validationError) {
       return;
     }
 
+    const normalizedTelegram = normalizeTelegram(telegram);
     startTransition(() => {
       void authRepository
-        .login(email.trim(), password)
-        .then(() => {
-          setRole('user');
+        .login(normalizedTelegram, password)
+        .then((response) => {
           if (remember) {
-            localStorage.setItem('ddl-auth-email', email.trim());
+            localStorage.setItem('ddl-auth-telegram', normalizedTelegram);
+          } else {
+            localStorage.removeItem('ddl-auth-telegram');
           }
-          navigate(returnTo);
+          finishAuth(response);
         })
         .catch((loginError: unknown) => setError(loginError instanceof Error ? loginError.message : t('loginError')));
     });
@@ -106,14 +118,13 @@ export const LoginPage = () => {
     >
       <form className="auth-form" noValidate onSubmit={submit}>
         <label className="field">
-          <span>Email</span>
+          <span>Telegram</span>
           <input
-            autoComplete="email"
-            inputMode="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            placeholder="player@deadlock.local"
-            type="email"
+            autoComplete="username"
+            value={telegram}
+            onChange={(event) => setTelegram(formatTelegramInput(event.target.value))}
+            onFocus={() => setTelegram((current) => current || '@')}
+            placeholder="@nickname"
           />
         </label>
 
@@ -130,7 +141,7 @@ export const LoginPage = () => {
 
         <label className="auth-check">
           <input checked={remember} onChange={(event) => setRemember(event.target.checked)} type="checkbox" />
-          <span>{t('rememberEmail')}</span>
+          <span>{t('rememberTelegram')}</span>
         </label>
 
         {error ? <p className="form-error">{error}</p> : null}
@@ -138,11 +149,8 @@ export const LoginPage = () => {
         <button className="button primary" disabled={isPending} type="submit">
           {isPending ? t('checking') : t('loginCta')}
         </button>
-
-        <p className="auth-footnote">
-          {t('demoAccount')} <strong>aster@deadlock.local</strong> / <strong>demo1</strong>
-        </p>
       </form>
+
     </AuthFrame>
   );
 };
@@ -150,11 +158,11 @@ export const LoginPage = () => {
 export const RegisterPage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { role, setRole, t } = useSession();
-  const [username, setUsername] = useState('Aster');
-  const [email, setEmail] = useState('aster@deadlock.local');
-  const [password, setPassword] = useState('demo12');
-  const [confirmPassword, setConfirmPassword] = useState('demo12');
+  const { role, setAuthenticatedUser, t } = useSession();
+  const [username, setUsername] = useState('');
+  const [telegram, setTelegram] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [acceptedRules, setAcceptedRules] = useState(false);
   const [error, setError] = useState('');
   const [isPending, startTransition] = useTransition();
@@ -163,9 +171,14 @@ export const RegisterPage = () => {
   const passwordProgress = Math.min(100, Math.round((password.length / 10) * 100));
   const motivation = useAuthMotivation();
 
+  const finishAuth = (response: AuthResponseDTO) => {
+    setAuthenticatedUser(response.user);
+    navigate(returnTo);
+  };
+
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const validationError = validateRegister(username, email, password, confirmPassword, t);
+    const validationError = validateRegister(username, telegram, password, confirmPassword, t);
     setError(validationError);
     if (validationError) {
       return;
@@ -178,11 +191,8 @@ export const RegisterPage = () => {
 
     startTransition(() => {
       void authRepository
-        .register(username.trim(), email.trim(), password)
-        .then(() => {
-          setRole('user');
-          navigate(returnTo);
-        })
+        .register(username.trim(), normalizeTelegram(telegram), password)
+        .then(finishAuth)
         .catch((registerError: unknown) =>
           setError(registerError instanceof Error ? registerError.message : t('registerError'))
         );
@@ -211,14 +221,13 @@ export const RegisterPage = () => {
         </label>
 
         <label className="field">
-          <span>Email</span>
+          <span>Telegram</span>
           <input
-            autoComplete="email"
-            inputMode="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            placeholder="player@deadlock.local"
-            type="email"
+            autoComplete="off"
+            value={telegram}
+            onChange={(event) => setTelegram(formatTelegramInput(event.target.value))}
+            onFocus={() => setTelegram((current) => current || '@')}
+            placeholder="@nickname"
           />
         </label>
 
@@ -245,7 +254,7 @@ export const RegisterPage = () => {
           </label>
         </div>
 
-        <div className="password-meter" aria-label="Надежность пароля">
+        <div className="password-meter" aria-label="Password strength">
           <span style={{ width: `${passwordProgress}%` }} />
         </div>
 
@@ -255,7 +264,7 @@ export const RegisterPage = () => {
             onChange={(event) => setAcceptedRules(event.target.checked)}
             type="checkbox"
           />
-          <span>{t('acceptMockRules')}</span>
+          <span>{t('acceptTournamentRules')}</span>
         </label>
 
         {error ? <p className="form-error">{error}</p> : null}
@@ -264,7 +273,71 @@ export const RegisterPage = () => {
           {isPending ? t('creating') : t('createAccount')}
         </button>
       </form>
+
     </AuthFrame>
+  );
+};
+
+export const TelegramConfirmationBanner = ({
+  telegram,
+  onUserRefresh
+}: {
+  telegram: string;
+  onUserRefresh: (user: UserDTO) => void;
+}) => {
+  const { t } = useSession();
+  const [currentUrl, setCurrentUrl] = useState('');
+
+  const loadConfirmationUrl = useCallback(() => {
+    return authRepository
+      .telegramConfirmation()
+      .then((response) => setCurrentUrl(response.telegramConfirmationUrl ?? ''))
+      .catch(() => setCurrentUrl(''));
+  }, []);
+
+  const checkConfirmation = useCallback(() => {
+    void authRepository
+      .me()
+      .then((user) => {
+        if (user.telegramConfirmed || user.telegram !== telegram) {
+          onUserRefresh(user);
+        }
+      })
+      .catch(() => undefined);
+  }, [onUserRefresh, telegram]);
+
+  useEffect(() => {
+    const timer = window.setInterval(checkConfirmation, 2500);
+    checkConfirmation();
+    return () => window.clearInterval(timer);
+  }, [checkConfirmation]);
+
+  useEffect(() => {
+    setCurrentUrl('');
+    void loadConfirmationUrl();
+  }, [loadConfirmationUrl, telegram]);
+
+  return (
+    <section className="telegram-confirmation-banner" aria-labelledby="telegram-confirm-title">
+      <div>
+        <p className="eyebrow">{t('telegramConfirmationEyebrow')}</p>
+        <h2 id="telegram-confirm-title">{t('telegramConfirmationTitle')}</h2>
+        <p>{t('telegramConfirmationText')}</p>
+        <p className="subtle">{t('telegramConfirmationWaiting')}</p>
+      </div>
+      <div className="form-actions">
+        {currentUrl ? (
+          <a className="button primary" href={currentUrl} target="_blank" rel="noreferrer">
+            {t('openTelegramBot')}
+          </a>
+        ) : (
+          <span className="form-error">{t('confirmationLinkMissing')}</span>
+        )}
+        <Link className="button ghost" to="/profile">
+          {t('changeTelegram')}
+        </Link>
+      </div>
+    </section>
   );
 };
 

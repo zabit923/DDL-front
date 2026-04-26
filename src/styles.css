@@ -43,6 +43,19 @@
   box-sizing: border-box;
 }
 
+@media (prefers-reduced-motion: no-preference) {
+  :root.theme-switching *,
+  :root.theme-switching *::before,
+  :root.theme-switching *::after {
+    transition:
+      background-color 260ms ease,
+      background-image 260ms ease,
+      color 260ms ease,
+      border-color 260ms ease,
+      box-shadow 260ms ease;
+  }
+}
+
 body {
   margin: 0;
   min-width: 320px;
@@ -246,10 +259,57 @@ button {
   padding: 0.55rem 0.75rem;
 }
 
+.profile-avatar-link {
+  display: grid;
+  width: 2.9rem;
+  height: 2.9rem;
+  place-items: center;
+  overflow: hidden;
+  color: #11140d;
+  font-size: 0.82rem;
+  font-weight: 950;
+  border: 1px solid color-mix(in srgb, var(--acid) 55%, var(--line));
+  border-radius: 50%;
+  background: var(--acid);
+  box-shadow: 0 10px 28px color-mix(in srgb, var(--acid) 25%, transparent);
+}
+
+.profile-avatar-link img,
+.profile-avatar-xl img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 .page-frame {
   width: min(1180px, calc(100% - 2rem));
   margin: 0 auto;
   padding: 2rem 0 4rem;
+}
+
+.telegram-confirmation-banner {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1rem;
+  align-items: center;
+  width: min(1180px, calc(100% - 2rem));
+  margin: 1rem auto 0;
+  padding: 1rem;
+  border: 1px solid color-mix(in srgb, var(--acid) 48%, transparent);
+  border-radius: 1.25rem;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--acid) 16%, transparent), transparent 42%),
+    var(--surface-strong);
+  box-shadow: var(--shadow);
+}
+
+.telegram-confirmation-banner h2,
+.telegram-confirmation-banner p {
+  margin: 0;
+}
+
+.telegram-confirmation-banner .form-actions {
+  justify-content: flex-end;
 }
 
 .stack-xl {
@@ -948,6 +1008,11 @@ p {
   text-transform: uppercase;
 }
 
+.member-card strong,
+.member-card span {
+  display: block;
+}
+
 input,
 select,
 textarea {
@@ -996,7 +1061,10 @@ textarea:focus {
 
 .member-card {
   position: relative;
+  display: grid;
+  align-content: start;
   min-height: 7rem;
+  gap: 0.35rem;
   padding: 0.9rem;
   border: 1px solid var(--line);
   border-radius: 1.2rem;
@@ -1055,6 +1123,30 @@ textarea:focus {
   color: var(--muted);
 }
 
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(16, 18, 13, 0.58);
+  backdrop-filter: blur(14px);
+}
+
+.telegram-confirmation-modal {
+  display: grid;
+  width: min(100%, 32rem);
+  gap: 1rem;
+  padding: clamp(1.2rem, 4vw, 2rem);
+  border: 1px solid rgba(215, 255, 85, 0.34);
+  border-radius: 1.6rem;
+  background:
+    radial-gradient(circle at 16% 0%, color-mix(in srgb, var(--acid) 18%, transparent), transparent 14rem),
+    var(--surface-strong);
+  box-shadow: var(--shadow);
+}
+
 .notification-list {
   display: grid;
   gap: 0.85rem;
@@ -1073,6 +1165,163 @@ textarea:focus {
 
 .notification-list article.unread {
   border-color: rgba(215, 255, 85, 0.42);
+}
+
+.profile-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(24rem, 0.65fr);
+  gap: 1rem;
+  align-items: center;
+  padding: clamp(1.25rem, 4vw, 2rem);
+  border: 1px solid var(--line);
+  border-radius: 2rem;
+  background: linear-gradient(145deg, rgba(244, 239, 221, 0.1), rgba(244, 239, 221, 0.04));
+  box-shadow: var(--shadow);
+}
+
+.profile-hero__identity {
+  display: flex;
+  gap: 1.1rem;
+  align-items: center;
+  min-width: 0;
+}
+
+.profile-avatar-xl {
+  position: relative;
+  display: grid;
+  width: clamp(5rem, 11vw, 7rem);
+  height: clamp(5rem, 11vw, 7rem);
+  min-width: clamp(5rem, 11vw, 7rem);
+  place-items: center;
+  overflow: visible;
+  color: #11140d;
+  font-size: 1.55rem;
+  font-weight: 950;
+}
+
+.profile-avatar-xl__image {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--acid) 55%, var(--line));
+  border-radius: 50%;
+  background: var(--acid);
+}
+
+.avatar-edit-button {
+  position: absolute;
+  right: -0.2rem;
+  bottom: -0.2rem;
+  z-index: 3;
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  place-items: center;
+  color: #11140d;
+  font-size: 1rem;
+  font-weight: 900;
+  border: 1px solid color-mix(in srgb, var(--acid) 50%, var(--line));
+  border-radius: 50%;
+  background: var(--acid);
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--acid) 35%, transparent);
+  cursor: pointer;
+}
+
+.avatar-edit-icon {
+  width: 1rem;
+  height: 1rem;
+  fill: none;
+  stroke: #11140d;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.sr-only-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
+.profile-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.profile-stats article {
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: 1.25rem;
+  background: var(--surface);
+}
+
+.profile-stats strong {
+  display: block;
+  font-size: 1.75rem;
+}
+
+.profile-stats span,
+.team-list span,
+.achievement-list span {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.profile-panel {
+  display: grid;
+  gap: 1rem;
+}
+
+.team-list,
+.achievement-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.team-list article,
+.achievement-list article {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 0;
+  padding: 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  background: var(--surface);
+}
+
+.team-list article > div {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.team-list strong,
+.team-list span {
+  display: block;
+}
+
+.achievement-list article {
+  display: grid;
+  justify-content: stretch;
+}
+
+.achievement-list article.unlocked {
+  border-color: rgba(215, 255, 85, 0.42);
+  background: rgba(215, 255, 85, 0.08);
+}
+
+.inline-suggestions {
+  position: static;
+  max-height: 10rem;
 }
 
 .article-page {
@@ -1110,6 +1359,140 @@ textarea:focus {
   padding: 2rem;
 }
 
+.admin-page h1 {
+  max-width: 11ch;
+}
+
+.admin-hero {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 88% 12%, color-mix(in srgb, var(--blue) 24%, transparent), transparent 22rem),
+    radial-gradient(circle at 12% 82%, color-mix(in srgb, var(--acid) 22%, transparent), transparent 24rem),
+    linear-gradient(145deg, rgba(244, 239, 221, 0.12), rgba(244, 239, 221, 0.035));
+}
+
+.admin-tabs,
+.admin-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+.admin-tab {
+  min-height: 2.5rem;
+  padding: 0.6rem 0.85rem;
+  color: var(--muted);
+  font-weight: 900;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+}
+
+.admin-tab.selected,
+.admin-tab:hover {
+  color: #11140d;
+  border-color: transparent;
+  background: var(--acid);
+}
+
+.admin-section {
+  display: grid;
+  gap: 1rem;
+}
+
+.admin-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 0.92fr) minmax(22rem, 0.52fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.admin-list,
+.admin-side-list {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.admin-card,
+.admin-mini-card {
+  display: grid;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: 1.25rem;
+  background: var(--surface);
+}
+
+.admin-card {
+  grid-template-columns: minmax(0, 1fr) minmax(16rem, 0.34fr);
+  align-items: start;
+}
+
+.admin-card__main,
+.admin-card__actions,
+.admin-mini-card > div {
+  display: grid;
+  gap: 0.8rem;
+  min-width: 0;
+}
+
+.admin-card__actions {
+  align-content: start;
+}
+
+.admin-mini-card strong {
+  display: block;
+  font-size: 1rem;
+}
+
+.admin-mini-card span,
+.admin-mini-card small {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.admin-fieldset {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: 1.25rem;
+  background: var(--panel);
+}
+
+.admin-fieldset legend {
+  padding: 0 0.4rem;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.admin-image-preview {
+  width: min(100%, 24rem);
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  background: var(--surface);
+}
+
+.admin-checkbox {
+  padding: 0.85rem;
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  background: var(--surface);
+}
+
+.compact-action {
+  width: fit-content;
+  min-height: 2.3rem;
+  padding: 0.45rem 0.75rem;
+}
+
 @keyframes rise-in {
   from {
     opacity: 0;
@@ -1136,17 +1519,24 @@ textarea:focus {
   }
 
   .hero-panel,
+  .profile-hero,
   .content-grid,
   .application-layout,
   .auth-page,
   .auth-frame,
+  .admin-layout,
   .status-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-card {
     grid-template-columns: 1fr;
   }
 
   .news-grid,
   .tournament-grid,
-  .metric-strip {
+  .metric-strip,
+  .profile-stats {
     grid-template-columns: 1fr;
   }
 
@@ -1161,7 +1551,17 @@ textarea:focus {
     padding-top: 1rem;
   }
 
+  .telegram-confirmation-banner {
+    grid-template-columns: 1fr;
+    width: min(100% - 1rem, 1180px);
+  }
+
+  .telegram-confirmation-banner .form-actions {
+    justify-content: flex-start;
+  }
+
   .hero-panel,
+  .profile-hero,
   .page-hero,
   .detail-hero,
   .panel,
@@ -1199,6 +1599,12 @@ textarea:focus {
   }
 
   .notification-list article {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .profile-hero__identity,
+  .team-list article {
     align-items: stretch;
     flex-direction: column;
   }
